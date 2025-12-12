@@ -245,11 +245,26 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
     if (!node) return { x: 0, y: 0 }
 
     const pinIndex = node.pins.findIndex((p) => p.id === ref.pinId)
-    const pinY = 60 + pinIndex * 32
 
-    // Card width 280: input handle ~16px from left, output handle ~264px from left
+    // DOM構造に基づいた正確な位置計算:
+    // ヘッダー部分: p-3 (上下24px) + アイコン領域 (32px) + border-b (1px) = 57px
+    // ピンコンテナ: p-2 (上部8px)
+    // 最初のピンまで: 57px + 8px = 65px
+    // 各ピンの高さ: ピンハンドル (16px) + space-y-1 (4px) = 20px
+    // ピンハンドルの中心: 8px (16px / 2)
+    const firstPinCenter = 65 + 8 // 73px
+    const pinHeight = 20
+    const pinY = firstPinCenter + pinIndex * pinHeight
+
+    // Card width 280px:
+    // ピンハンドルは w-4 h-4 (16x16px)
+    // ピンコンテナのpadding p-2 (8px) を考慮
+    // input handle: 左端から 8px (padding) + 8px (ハンドル中心) = 16px
+    // output handle: 右端から 280px - 8px (padding) - 8px (ハンドル中心) = 264px
+    const pinX = pin.type === "input" ? 16 : 264
+
     return {
-      x: node.x + (pin.type === "input" ? 16 : 264),
+      x: node.x + pinX,
       y: node.y + (isInvalidEndNode(node) ? 24 : 0) + pinY,
     }
   }
