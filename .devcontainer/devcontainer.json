@@ -1,0 +1,37 @@
+{
+  "name": "Fullstack Dev Environment",
+  "dockerComposeFile": ["compose.yaml"],
+  "service": "devbox",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000, 8080, 8082, 8000, 8001, 5433, 6379, 9000],
+  "remoteEnv": {
+    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest",
+      "enableNonRootDocker": "true",
+      "moby": "true"
+    }
+  },
+  "containerEnv": {
+    "COMPOSE_BAKE": "false",
+    "DOCKER_BUILDKIT": "0",
+    "COMPOSE_DOCKER_CLI_BUILD": "0"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "dbaeumer.vscode-eslint",
+        "bmewburn.vscode-intelephense-client",
+        "ms-python.python",
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "humao.rest-client"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "postStartCommand": "bash .devcontainer/check-versions.sh"
+}
