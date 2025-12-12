@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [ devnet ]
+    ports:
+      - "6380:6379"
+
+  redisCommander:
+    image: rediscommander/redis-commander:latest
+    networks: [ devnet ]
+    restart: always
+    environment:
+      REDIS_HOSTS: Index0:redis:6379:0
+      TZ: JST-9
+    ports:
+      - "8002:8081"
+    depends_on:
+      - redis
