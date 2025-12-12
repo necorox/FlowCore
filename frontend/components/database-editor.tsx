@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Table2, Trash2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -8,81 +8,67 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-
-interface Column {
-  id: string
-  name: string
-  type: string
-  required: boolean
-}
-
-interface Table {
-  id: string
-  name: string
-  columns: Column[]
-}
+import { getTables, createTable, updateTable, deleteTable as deleteTableApi, importCSV } from "@/lib/api"
+import type { Table, Column, ColumnCreate } from "@/lib/types"
 
 export function DatabaseEditor() {
-  const [tables, setTables] = useState<Table[]>([
-    {
-      id: "1",
-      name: "users",
-      columns: [
-        { id: "1", name: "id", type: "uuid", required: true },
-        { id: "2", name: "email", type: "text", required: true },
-        { id: "3", name: "created_at", type: "timestamp", required: true },
-      ],
-    },
-    {
-      id: "2",
-      name: "m_items",
-      columns: [
-        { id: "1", name: "id", type: "uuid", required: true },
-        { id: "2", name: "name", type: "text", required: true },
-        { id: "3", name: "type", type: "text", required: true },
-        { id: "4", name: "rarity", type: "integer", required: true },
-        { id: "5", name: "effect_value", type: "integer", required: true },
-      ],
-    },
-    {
-      id: "3",
-      name: "u_items",
-      columns: [
-        { id: "1", name: "id", type: "uuid", required: true },
-        { id: "2", name: "user_id", type: "uuid", required: true },
-        { id: "3", name: "item_id", type: "uuid", required: true },
-        { id: "4", name: "count", type: "integer", required: true },
-        { id: "5", name: "obtained_at", type: "timestamp", required: true },
-      ],
-    },
-  ])
-  const [selectedTable, setSelectedTable] = useState<string | null>("1")
+  const [tables, setTables] = useState<Table[]>([])
+  const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [csvData, setCsvData] = useState("")
   const [showCsvImport, setShowCsvImport] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const addColumn = () => {
+  // 初期読み込み
+  useEffect(() => {
+    loadTables()
+  }, [])
+
+  const loadTables = async () => {
+    setLoading(true)
+    setError(null)
+    const result = await getTables()
+
+    if (result.success) {
+      setTables(result.data.tables)
+      if (result.data.tables.length > 0 && !selectedTable) {
+        setSelectedTable(result.data.tables[0].id)
+      }
+    } else {
+      setError(result.error)
+      console.error("Failed to load tables:", result.error)
+    }
+    setLoading(false)
+  }
+
+  const addColumn = async () => {
     if (!selectedTable) return
-    setTables(
-      tables.map((table) =>
-        table.id === selectedTable
-          ? {
-              ...table,
-              columns: [
-                ...table.columns,
-                {
-                  id: Date.now().toString(),
-                  name: "new_column",
-                  type: "text",
-                  required: false,
-                },
-              ],
-            }
-          : table,
-      ),
-    )
+    const currentTable = tables.find((t) => t.id === selectedTable)
+    if (!currentTable) return
+
+    // 新しいカラムをローカルに追加（即座に反映）
+    const newColumn: ColumnCreate = {
+      name: "new_column",
+      type: "text",
+      required: false,
+    }
+
+    // APIを呼び出してサーバーに反映
+    const result = await updateTable(selectedTable, {
+      columns: [newColumn],
+    })
+
+    if (result.success) {
+      // 成功したらデータを再読み込み
+      await loadTables()
+      setSelectedTable(selectedTable) // 選択を維持
+    } else {
+      alert(`カラムの追加に失敗しました: ${result.error}`)
+    }
   }
 
   const deleteColumn = (columnId: string) => {
+    // カラム削除はバックエンド側で未実装のため、ローカルのみで削除
     if (!selectedTable) return
     setTables(
       tables.map((table) =>
@@ -94,9 +80,11 @@ export function DatabaseEditor() {
           : table,
       ),
     )
+    alert("注意: カラム削除はローカルのみです。バックエンド側の実装が必要です。")
   }
 
   const updateColumn = (columnId: string, field: keyof Column, value: string | boolean) => {
+    // カラム更新もローカルのみ
     if (!selectedTable) return
     setTables(
       tables.map((table) =>
@@ -110,33 +98,82 @@ export function DatabaseEditor() {
     )
   }
 
-  const addTable = () => {
-    const newTable: Table = {
-      id: Date.now().toString(),
-      name: `table_${tables.length + 1}`,
-      columns: [{ id: Date.now().toString(), name: "id", type: "uuid", required: true }],
+  const addTable = async () => {
+    const tableName = prompt("テーブル名を入力してください:", `table_${tables.length + 1}`)
+    if (!tableName) return
+
+    const result = await createTable({
+      name: tableName,
+      columns: [
+        {
+          name: "id",
+          type: "uuid",
+          required: true,
+        },
+      ],
+    })
+
+    if (result.success) {
+      await loadTables()
+      setSelectedTable(result.data.id)
+    } else {
+      alert(`テーブルの作成に失敗しました: ${result.error}`)
     }
-    setTables([...tables, newTable])
-    setSelectedTable(newTable.id)
   }
 
-  const handleCsvImport = () => {
+  const handleDeleteTable = async () => {
+    if (!selectedTable) return
+    const currentTable = tables.find((t) => t.id === selectedTable)
+    if (!currentTable) return
+
+    if (!confirm(`テーブル "${currentTable.name}" を削除しますか？`)) return
+
+    const result = await deleteTableApi(selectedTable)
+
+    if (result.success) {
+      await loadTables()
+      setSelectedTable(null)
+    } else {
+      alert(`テーブルの削除に失敗しました: ${result.error}`)
+    }
+  }
+
+  const handleCsvImport = async () => {
     if (!csvData.trim() || !selectedTable) return
 
-    const lines = csvData.trim().split("\n")
-    if (lines.length === 0) return
+    const result = await importCSV(selectedTable, {
+      csv_data: csvData,
+    })
 
-    const headers = lines[0].split(",").map((h) => h.trim())
-    const rows = lines.slice(1).map((line) => line.split(",").map((cell) => cell.trim()))
-
-    console.log(`[v0] Importing ${rows.length} rows with columns:`, headers)
-    alert(`CSVデータをインポートしました: ${rows.length}行, カラム: ${headers.join(", ")}`)
-
-    setCsvData("")
-    setShowCsvImport(false)
+    if (result.success) {
+      alert("CSVデータをインポートしました")
+      setCsvData("")
+      setShowCsvImport(false)
+    } else {
+      alert(`CSVインポートに失敗しました: ${result.error}`)
+    }
   }
 
   const currentTable = tables.find((t) => t.id === selectedTable)
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-muted-foreground">読み込み中...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive mb-4">エラー: {error}</p>
+          <Button onClick={loadTables}>再読み込み</Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex">
@@ -172,6 +209,10 @@ export function DatabaseEditor() {
                 <p className="text-sm text-muted-foreground">{currentTable.columns.length} カラム</p>
               </div>
               <div className="flex gap-2">
+                <Button onClick={handleDeleteTable} variant="destructive" size="sm">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  テーブル削除
+                </Button>
                 <Button onClick={() => setShowCsvImport(!showCsvImport)} variant="outline">
                   <Upload className="w-4 h-4 mr-2" />
                   CSVインポート
