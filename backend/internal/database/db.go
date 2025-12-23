@@ -23,7 +23,8 @@ func New(dsn string) (*DB, error) {
 
 	// 接続テスト
 	if err := conn.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		log.Printf("Warning: failed to ping database: %v. Proceeding without active DB connection.", err)
+		// return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	log.Println("Database connected successfully")

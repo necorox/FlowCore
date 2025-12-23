@@ -36,7 +36,7 @@ ON CONFLICT DO NOTHING;
 -- サンプルAPIエンドポイント定義
 INSERT INTO meta_endpoints (id, name, method, path, flow_definition, created_at, updated_at) VALUES
 -- ユーザー一覧取得エンドポイント
-('ep-00000001-0000-0000-0000-000000000001', 'ユーザー一覧取得', 'GET', '/users/list', '{
+('00000001-0000-0000-0000-000000000001', 'ユーザー一覧取得', 'GET', '/users/list', '{
   "nodes": [
     {
       "id": "start-1",
@@ -130,7 +130,7 @@ INSERT INTO meta_endpoints (id, name, method, path, flow_definition, created_at,
 }'::jsonb, NOW(), NOW()),
 
 -- アイテム一覧取得エンドポイント
-('ep-00000002-0000-0000-0000-000000000002', 'アイテムマスター一覧取得', 'GET', '/items/master', '{
+('00000002-0000-0000-0000-000000000002', 'アイテムマスター一覧取得', 'GET', '/items/master', '{
   "nodes": [
     {
       "id": "start-1",
@@ -225,7 +225,7 @@ INSERT INTO meta_endpoints (id, name, method, path, flow_definition, created_at,
 }'::jsonb, NOW(), NOW()),
 
 -- ユーザーアイテム取得エンドポイント
-('ep-00000003-0000-0000-0000-000000000003', 'ユーザーアイテム取得', 'GET', '/users/{user_id}/items', '{
+('00000003-0000-0000-0000-000000000003', 'ユーザーアイテム取得', 'GET', '/users/{user_id}/items', '{
   "nodes": [
     {
       "id": "start-1",

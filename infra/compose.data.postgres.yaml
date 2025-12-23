@@ -1,8 +1,9 @@
-version: "3.8"
-
 volumes:
   pgdata:
 
+networks:
+  devnet:
+    external: true
 
 services:
   db:

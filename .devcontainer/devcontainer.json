@@ -1,17 +1,39 @@
 {
   "name": "Fullstack Dev Environment",
-  "dockerComposeFile": ["compose.yaml"],
-  "service": "devbox",
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
   "workspaceFolder": "/workspace",
-  "forwardPorts": [3000, 8080, 8082, 8000, 8001, 5433, 6379, 9000],
-  "remoteEnv": {
-    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
-  },
+
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
+  ],
+
+  "runArgs": [
+    "--network=devnet"
+  ],
+
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "version": "latest",
       "enableNonRootDocker": "true",
       "moby": "true"
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.21.4"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20.10.0"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.74.0"
+    },
+    "ghcr.io/devcontainers/features/php:1": {
+      "version": "8.2"
+    },
+    "ghcr.io/devcontainers-extra/features/claude-code:1": {
+      "version": "latest"
     }
   },
   "containerEnv": {
@@ -32,6 +54,6 @@
       ]
     }
   },
-  "remoteUser": "vscode",
-  "postStartCommand": "bash .devcontainer/check-versions.sh"
+  "remoteUser": "vscode"
+  // "postCreateCommand": "bash .devcontainer/setup.sh"
 }

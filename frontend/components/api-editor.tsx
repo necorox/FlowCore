@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Plus, Play, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,25 @@ export function ApiEditor() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<any>(null)
+
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleFlowChange = (newFlow: Flow) => {
+    if (!selectedEndpoint) return
+
+    // 1. Local update
+    setEndpoints((prev) => prev.map((e) => (e.id === selectedEndpoint ? { ...e, flow: newFlow } : e)))
+
+    // 2. Debounce save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      console.log("Auto-saving flow for endpoint:", selectedEndpoint)
+      await updateEndpoint(selectedEndpoint, { flow: newFlow })
+    }, 1000)
+  }
 
   // 初期読み込み
   useEffect(() => {
@@ -197,8 +216,8 @@ export function ApiEditor() {
             <div
               key={endpoint.id}
               className={`group flex items-center gap-2 px-3 py-2.5 rounded text-sm transition-colors ${selectedEndpoint === endpoint.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-secondary"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-secondary"
                 }`}
             >
               <button
@@ -256,7 +275,12 @@ export function ApiEditor() {
               </div>
             </div>
             <div className="flex-1 overflow-hidden">
-              <NodeCanvas key={currentEndpoint.id} endpointId={currentEndpoint.id} />
+              <NodeCanvas
+                key={currentEndpoint.id}
+                endpointId={currentEndpoint.id}
+                initialFlow={currentEndpoint.flow || { nodes: [], connections: [] }}
+                onChange={handleFlowChange}
+              />
             </div>
           </>
         ) : (

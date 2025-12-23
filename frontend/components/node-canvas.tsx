@@ -13,42 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { NodeEditorPanel } from "@/components/node-editor-panel"
 
-/**
- * ==============================
- * Types
- * ==============================
- */
-interface Pin {
-  id: string
-  nodeId: string
-  type: "input" | "output"
-  dataType: string
-  label: string
-}
-
-interface PinRef {
-  nodeId: string
-  pinId: string
-}
-
-interface Connection {
-  id: string
-  from: PinRef // must be an output pin
-  to: PinRef // must be an input pin
-}
-
-interface Node {
-  id: string
-  type: "start" | "database" | "filter" | "response" | "process"
-  label: string
-  x: number
-  y: number
-  config?: Record<string, any>
-  pins: Pin[]
-}
+import type { Node, Connection, Pin, PinRef, Flow, NodeType } from "@/lib/types"
 
 interface NodeCanvasProps {
   endpointId: string
+  initialFlow: Flow
+  onChange?: (flow: Flow) => void
 }
 
 /**
@@ -56,150 +26,24 @@ interface NodeCanvasProps {
  * Demo Graphs
  * ==============================
  */
-const DEFAULT_NODES_USERS: Node[] = [
-  {
-    id: "1",
-    type: "start",
-    label: "リクエスト",
-    x: 50,
-    y: 150,
-    config: { method: "GET", params: ["userId"] },
-    pins: [{ id: "1-out-1", nodeId: "1", type: "output", dataType: "string", label: "userId" }],
-  },
-  {
-    id: "2",
-    type: "database",
-    label: "ユーザー取得",
-    x: 400,
-    y: 150,
-    config: { database: "main", table: "users", columns: ["id", "name", "score"] },
-    pins: [
-      { id: "2-in-1", nodeId: "2", type: "input", dataType: "string", label: "id" },
-      { id: "2-out-1", nodeId: "2", type: "output", dataType: "string", label: "id" },
-      { id: "2-out-2", nodeId: "2", type: "output", dataType: "string", label: "name" },
-      { id: "2-out-3", nodeId: "2", type: "output", dataType: "number", label: "score" },
-    ],
-  },
-  {
-    id: "3",
-    type: "process",
-    label: "ランダム値生成",
-    x: 750,
-    y: 50,
-    config: { script: "return Math.floor(Math.random() * 100) + 1;" },
-    pins: [{ id: "3-out-1", nodeId: "3", type: "output", dataType: "number", label: "randomValue" }],
-  },
-  {
-    id: "4",
-    type: "process",
-    label: "条件分岐(≤50)",
-    x: 1100,
-    y: 50,
-    config: { script: "return input <= 50;" },
-    pins: [
-      { id: "4-in-1", nodeId: "4", type: "input", dataType: "number", label: "value" },
-      { id: "4-out-1", nodeId: "4", type: "output", dataType: "boolean", label: "true(A処理)" },
-      { id: "4-out-2", nodeId: "4", type: "output", dataType: "boolean", label: "false(B処理)" },
-    ],
-  },
-  {
-    id: "5",
-    type: "response",
-    label: "レスポンスA",
-    x: 1450,
-    y: 0,
-    config: { selectedFields: [] },
-    pins: [{ id: "5-in-1", nodeId: "5", type: "input", dataType: "any", label: "data" }],
-  },
-  {
-    id: "6",
-    type: "response",
-    label: "レスポンスB",
-    x: 1450,
-    y: 250,
-    config: { selectedFields: [] },
-    pins: [{ id: "6-in-1", nodeId: "6", type: "input", dataType: "any", label: "data" }],
-  },
-]
 
-const DEFAULT_CONNECTIONS_USERS: Connection[] = [
-  { id: "c1", from: { nodeId: "1", pinId: "1-out-1" }, to: { nodeId: "2", pinId: "2-in-1" } },
-  { id: "c2", from: { nodeId: "3", pinId: "3-out-1" }, to: { nodeId: "4", pinId: "4-in-1" } },
-  { id: "c3", from: { nodeId: "4", pinId: "4-out-1" }, to: { nodeId: "5", pinId: "5-in-1" } },
-  { id: "c4", from: { nodeId: "4", pinId: "4-out-2" }, to: { nodeId: "6", pinId: "6-in-1" } },
-]
-
-const USER_ITEMS_NODES: Node[] = [
-  {
-    id: "1",
-    type: "start",
-    label: "リクエスト",
-    x: 50,
-    y: 150,
-    config: { method: "GET", params: ["userId"] },
-    pins: [{ id: "1-out-1", nodeId: "1", type: "output", dataType: "string", label: "userId" }],
-  },
-  {
-    id: "2",
-    type: "database",
-    label: "所持アイテム取得",
-    x: 400,
-    y: 150,
-    config: { database: "main", table: "u_items", columns: ["item_id", "count"] },
-    pins: [
-      { id: "2-in-1", nodeId: "2", type: "input", dataType: "string", label: "user_id" },
-      { id: "2-out-1", nodeId: "2", type: "output", dataType: "string", label: "item_id" },
-      { id: "2-out-2", nodeId: "2", type: "output", dataType: "integer", label: "count" },
-    ],
-  },
-  {
-    id: "3",
-    type: "database",
-    label: "アイテム詳細",
-    x: 750,
-    y: 150,
-    config: { database: "main", table: "m_items", columns: ["name", "rarity"] },
-    pins: [
-      { id: "3-in-1", nodeId: "3", type: "input", dataType: "string", label: "id" },
-      { id: "3-out-1", nodeId: "3", type: "output", dataType: "string", label: "name" },
-      { id: "3-out-2", nodeId: "3", type: "output", dataType: "integer", label: "rarity" },
-    ],
-  },
-  {
-    id: "4",
-    type: "response",
-    label: "アイテム一覧",
-    x: 1100,
-    y: 150,
-    config: { selectedFields: [] },
-    pins: [{ id: "4-in-1", nodeId: "4", type: "input", dataType: "any", label: "items" }],
-  },
-]
-
-const USER_ITEMS_CONNECTIONS: Connection[] = [
-  { id: "c1", from: { nodeId: "1", pinId: "1-out-1" }, to: { nodeId: "2", pinId: "2-in-1" } },
-  { id: "c2", from: { nodeId: "2", pinId: "2-out-1" }, to: { nodeId: "3", pinId: "3-in-1" } },
-  { id: "c3", from: { nodeId: "3", pinId: "3-out-1" }, to: { nodeId: "4", pinId: "4-in-1" } },
-]
 
 /**
  * ==============================
  * Component
  * ==============================
  */
-export function NodeCanvas({ endpointId }: NodeCanvasProps) {
-  const [nodes, setNodes] = useState<Node[]>([])
-  const [connections, setConnections] = useState<Connection[]>([])
+export function NodeCanvas({ endpointId, initialFlow, onChange }: NodeCanvasProps) {
+  const [nodes, setNodes] = useState<Node[]>(initialFlow.nodes || [])
+  const [connections, setConnections] = useState<Connection[]>(initialFlow.connections || [])
 
+  // Propagate changes when nodes or connections update
   useEffect(() => {
-    if (endpointId === "3") {
-      setNodes(USER_ITEMS_NODES)
-      setConnections(USER_ITEMS_CONNECTIONS)
-    } else {
-      setNodes(DEFAULT_NODES_USERS)
-      setConnections(DEFAULT_CONNECTIONS_USERS)
-    }
-  }, [endpointId])
+    onChange?.({ nodes, connections })
+  }, [nodes, connections]) // Warning: Check if this causes infinite loops if parent updates initialFlow. 
+  // Actually, standard pattern is internal state prioritized, key reset on parent change.
+  // The key={currentEndpoint.id} in parent handles the reset.
+
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
 
@@ -236,15 +80,15 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
   const getAllPins = (): Pin[] => nodes.flatMap((n) => n.pins)
 
   const getPin = (ref: PinRef): Pin | undefined =>
-    nodes.find((n) => n.id === ref.nodeId)?.pins.find((p) => p.id === ref.pinId)
+    nodes.find((n) => n.id === ref.node_id)?.pins.find((p) => p.id === ref.pin_id)
 
   const getPinPosition = (ref: PinRef) => {
     const pin = getPin(ref)
     if (!pin) return { x: 0, y: 0 }
-    const node = nodes.find((n) => n.id === ref.nodeId)
+    const node = nodes.find((n) => n.id === ref.node_id)
     if (!node) return { x: 0, y: 0 }
 
-    const pinIndex = node.pins.findIndex((p) => p.id === ref.pinId)
+    const pinIndex = node.pins.findIndex((p) => p.id === ref.pin_id)
 
     // DOM構造に基づいた正確な位置計算:
     // ヘッダー部分: p-3 (上下24px) + アイコン領域 (32px) + border-b (1px) = 57px
@@ -273,25 +117,25 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
     const fromPin = getPin(from)
     const toPin = getPin(to)
     if (!fromPin || !toPin) return { ok: false, reason: "ピンが見つかりません" }
-    if (from.nodeId === to.nodeId) return { ok: false, reason: "同一ノード間は接続不可" }
+    if (from.node_id === to.node_id) return { ok: false, reason: "同一ノード間は接続不可" }
     if (fromPin.type !== "output") return { ok: false, reason: "出力ピンから開始してください" }
     if (toPin.type !== "input") return { ok: false, reason: "入力ピンへ接続してください" }
 
     // one-to-one for input pins
-    const already = connections.some((c) => c.to.pinId === to.pinId && c.to.nodeId === to.nodeId)
+    const already = connections.some((c) => c.to.pin_id === to.pin_id && c.to.node_id === to.node_id)
     if (already) return { ok: false, reason: "入力ピンには1本まで" }
 
     // simple datatype check ("any" is wildcard)
     const compatible =
-      fromPin.dataType === "any" || toPin.dataType === "any" || fromPin.dataType === toPin.dataType
-    if (!compatible) return { ok: false, reason: `${fromPin.dataType} → ${toPin.dataType} は非互換` }
+      fromPin.data_type === "any" || toPin.data_type === "any" || fromPin.data_type === toPin.data_type
+    if (!compatible) return { ok: false, reason: `${fromPin.data_type} → ${toPin.data_type} は非互換` }
 
     return { ok: true }
   }
 
   const isInvalidEndNode = (node: Node) => {
     const cannotBeEnd = node.type === "database" || node.type === "filter" || node.type === "process"
-    const hasOutput = connections.some((conn) => conn.from.nodeId === node.id)
+    const hasOutput = connections.some((conn) => conn.from.node_id === node.id)
     return cannotBeEnd && !hasOutput
   }
 
@@ -299,7 +143,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
     const isStartNode = node.type === "start"
     const isEndNode = node.type === "response"
     const cannotBeEnd = node.type === "database" || node.type === "filter" || node.type === "process"
-    const hasOutput = connections.some((conn) => conn.from.nodeId === node.id)
+    const hasOutput = connections.some((conn) => conn.from.node_id === node.id)
 
     if (cannotBeEnd && !hasOutput) return "border-red-500 bg-red-500/10"
     if (isStartNode || isEndNode) return "border-blue-500 bg-blue-500/10"
@@ -322,7 +166,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
   /**
    * Actions
    */
-  const addNode = (type: Node["type"]) => {
+  const addNode = (type: NodeType) => {
     const labels = {
       start: "リクエスト",
       database: "データベースクエリ",
@@ -333,20 +177,20 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
 
     const ts = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
-    const defaultPins: Record<string, Omit<Pin, "nodeId">[]> = {
-      start: [{ id: `${ts()}-out-1`, type: "output", dataType: "string", label: "param1" }],
+    const defaultPins: Record<string, Omit<Pin, "node_id">[]> = {
+      start: [{ id: `${ts()}-out-1`, type: "output", data_type: "string", label: "param1" }],
       database: [
-        { id: `${ts()}-in-1`, type: "input", dataType: "string", label: "条件" },
-        { id: `${ts()}-out-1`, type: "output", dataType: "string", label: "結果" },
+        { id: `${ts()}-in-1`, type: "input", data_type: "string", label: "条件" },
+        { id: `${ts()}-out-1`, type: "output", data_type: "string", label: "結果" },
       ],
       filter: [
-        { id: `${ts()}-in-1`, type: "input", dataType: "any", label: "入力" },
-        { id: `${ts()}-out-1`, type: "output", dataType: "any", label: "出力" },
+        { id: `${ts()}-in-1`, type: "input", data_type: "any", label: "入力" },
+        { id: `${ts()}-out-1`, type: "output", data_type: "any", label: "出力" },
       ],
-      response: [{ id: `${ts()}-in-1`, type: "input", dataType: "any", label: "data" }],
+      response: [{ id: `${ts()}-in-1`, type: "input", data_type: "any", label: "data" }],
       process: [
-        { id: `${ts()}-in-1`, type: "input", dataType: "any", label: "入力" },
-        { id: `${ts()}-out-1`, type: "output", dataType: "any", label: "出力" },
+        { id: `${ts()}-in-1`, type: "input", data_type: "any", label: "入力" },
+        { id: `${ts()}-out-1`, type: "output", data_type: "any", label: "出力" },
       ],
     }
 
@@ -359,7 +203,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
     }
 
     const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    const pins = defaultPins[type].map((p) => ({ ...p, nodeId: newId }))
+    const pins = defaultPins[type].map((p) => ({ ...p, node_id: newId }))
 
     let x = 50 + (canvasRef.current?.scrollLeft || 0)
     let y = 150 + (canvasRef.current?.scrollTop || 0)
@@ -386,7 +230,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
 
   const deleteNode = (nodeId: string) => {
     setNodes((prev) => prev.filter((n) => n.id !== nodeId))
-    setConnections((prev) => prev.filter((c) => c.from.nodeId !== nodeId && c.to.nodeId !== nodeId))
+    setConnections((prev) => prev.filter((c) => c.from.node_id !== nodeId && c.to.node_id !== nodeId))
     if (selectedNode === nodeId) setSelectedNode(null)
   }
 
@@ -414,7 +258,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
     const validation = canConnect(draggingConnection.from, ref)
     if (validation.ok) {
       setConnections((prev) => [
-        ...prev.filter((c) => !(c.to.nodeId === ref.nodeId && c.to.pinId === ref.pinId)), // one-to-one on input
+        ...prev.filter((c) => !(c.to.node_id === ref.node_id && c.to.pin_id === ref.pin_id)), // one-to-one on input
         { id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, from: draggingConnection.from, to: ref },
       ])
     }
@@ -492,6 +336,35 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
 
   return (
     <div className="relative h-full bg-background flex select-none">
+      {/* Top-right controls moved here to specific z-index and positioning relative to container */}
+      <div className="absolute top-4 right-4 z-50">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              ノードを追加
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={() => addNode("start")}>
+              <ArrowRight className="w-4 h-4 mr-2" />リクエスト
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => addNode("database")}>
+              <Database className="w-4 h-4 mr-2" />データベースクエリ
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => addNode("process")}>
+              <Code className="w-4 h-4 mr-2" />処理
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => addNode("filter")}>
+              <Filter className="w-4 h-4 mr-2" />データ変換
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => addNode("response")}>
+              <Send className="w-4 h-4 mr-2" />レスポンス
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <div
         ref={canvasRef}
         className={`flex-1 relative overflow-auto ${isPanning ? "cursor-grabbing" : "cursor-default"}`}
@@ -500,34 +373,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
         onMouseUp={handleCanvasMouseUp}
         onMouseLeave={handleCanvasMouseUp}
       >
-        {/* Top-right controls */}
-        <div className="absolute top-4 right-4 z-50">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                ノードを追加
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => addNode("start")}>
-                <ArrowRight className="w-4 h-4 mr-2" />リクエスト
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => addNode("database")}>
-                <Database className="w-4 h-4 mr-2" />データベースクエリ
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => addNode("process")}>
-                <Code className="w-4 h-4 mr-2" />処理
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => addNode("filter")}>
-                <Filter className="w-4 h-4 mr-2" />データ変換
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => addNode("response")}>
-                <Send className="w-4 h-4 mr-2" />レスポンス
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+
 
         <div className="relative p-8 min-w-[2400px] min-h-[1600px]">
           {/* Connections layer */}
@@ -602,7 +448,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
                   e.stopPropagation()
                   setSelectedNode(node.id)
                 }}
-                className={`absolute w-[280px] p-0 cursor-move transition-all hover:shadow-lg ${getNodeColor(node)} ${selectedNode === node.id ? "ring-2 ring-primary shadow-lg" : ""}`}
+                className={`absolute w-[280px] p-0 gap-0 cursor-move transition-all hover:shadow-lg ${getNodeColor(node)} ${selectedNode === node.id ? "ring-2 ring-primary shadow-lg" : ""}`}
                 style={{ left: node.x, top: node.y, zIndex: 2 }}
               >
                 {invalidEnd && (
@@ -628,7 +474,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
 
                 <div className="p-2 space-y-1">
                   {node.pins.map((pin) => {
-                    const ref: PinRef = { nodeId: node.id, pinId: pin.id }
+                    const ref: PinRef = { node_id: node.id, pin_id: pin.id }
                     return (
                       <div key={pin.id} className="flex items-center gap-2 group relative">
                         {pin.type === "input" && (
@@ -636,7 +482,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
                             className="pin-handle w-4 h-4 rounded-full border-2 border-primary bg-background cursor-pointer hover:bg-primary hover:scale-110 transition-all flex-shrink-0"
                             onMouseDown={(e) => handlePinMouseDown(ref, e)}
                             onMouseUp={(e) => handlePinMouseUp(ref, e)}
-                            title={`${pin.label} (${pin.dataType})`}
+                            title={`${pin.label} (${pin.data_type})`}
                           />
                         )}
                         <span className={`text-xs flex-1 ${pin.type === "input" ? "text-left" : "text-right"}`}>
@@ -646,7 +492,7 @@ export function NodeCanvas({ endpointId }: NodeCanvasProps) {
                           <div
                             className="pin-handle w-4 h-4 rounded-full border-2 border-primary bg-background cursor-pointer hover:bg-primary hover:scale-110 transition-all flex-shrink-0"
                             onMouseDown={(e) => handlePinMouseDown(ref, e)}
-                            title={`${pin.label} (${pin.dataType})`}
+                            title={`${pin.label} (${pin.data_type})`}
                           />
                         )}
                       </div>

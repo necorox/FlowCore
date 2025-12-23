@@ -10,23 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 
-interface Pin {
-  id: string
-  nodeId: string
-  type: "input" | "output"
-  dataType: string
-  label: string
-}
-
-interface Node {
-  id: string
-  type: "start" | "database" | "filter" | "response" | "process"
-  label: string
-  x: number
-  y: number
-  config?: Record<string, any>
-  pins: Pin[]
-}
+import type { Node, Pin, NodeType } from "@/lib/types"
 
 interface NodeEditorPanelProps {
   node: Node
